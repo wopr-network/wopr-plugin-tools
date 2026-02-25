@@ -5,8 +5,8 @@
  * Registered as an A2A tool via the plugin's registerA2AServer call.
  */
 
-import type { A2AToolResult, ToolsPluginConfig } from "./types.js";
 import { checkDomainPolicy } from "./security-policy.js";
+import type { A2AToolResult, ToolsPluginConfig } from "./types.js";
 
 export interface HttpFetchArgs {
   url: string;
