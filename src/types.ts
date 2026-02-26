@@ -12,6 +12,7 @@ export type {
   ConfigField,
   ConfigSchema,
   PluginCommand,
+  PluginManifest,
   WOPRPlugin,
   WOPRPluginContext,
 } from "@wopr-network/plugin-types";
