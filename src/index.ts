@@ -131,6 +131,7 @@ const plugin: WOPRPlugin = {
   manifest,
 
   async init(context: WOPRPluginContext) {
+    cleanups.length = 0;
     ctx = context;
     ctx.registerConfigSchema("wopr-plugin-tools", configSchema);
     cleanups.push(() => {
@@ -165,6 +166,9 @@ const plugin: WOPRPlugin = {
     }
     cleanups.length = 0;
     ctx = null;
+    // NOTE: A2A tools registered via registerA2AServer remain registered after
+    // shutdown — the platform does not expose unregisterA2AServer. This is a
+    // known platform limitation affecting all plugins, not specific to this one.
   },
 };
 
