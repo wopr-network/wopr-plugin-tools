@@ -148,13 +148,6 @@ const plugin: WOPRPlugin = {
     const httpFetchHandler = createHttpFetchHandler(getToolsConfig);
     const execCommandHandler = createExecCommandHandler(getToolsConfig);
 
-    // TODO: Tools registered via registerA2AServer bypass the withSecurityCheck
-    // wrapper used by core tools. The plugin tool path in a2a-mcp.ts does not
-    // call checkToolPermission before invoking the handler. This is a pre-existing
-    // gap for ALL plugin tools, not specific to this plugin. The TOOL_CAPABILITY_MAP
-    // entries for http_fetch and exec_command remain in core security/types.ts for
-    // policy enforcement, but they are not enforced at call time for plugin tools.
-    // Track this in a follow-up issue (e.g., WOP-568).
     ctx.registerA2AServer(buildA2AConfig(httpFetchHandler, execCommandHandler));
 
     ctx.log.info("Tools plugin initialized: http_fetch, exec_command registered as A2A tools");
