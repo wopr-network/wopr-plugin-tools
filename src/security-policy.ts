@@ -35,6 +35,17 @@ const DEFAULT_ALLOWED_COMMANDS = [
 
 const SHELL_OPERATORS = [";", "&&", "||", "|", "`", "$("];
 
+const SENSITIVE_PATHS = [
+  "/etc/shadow",
+  "/etc/passwd",
+  "/etc/sudoers",
+  "/proc/self/environ",
+  "/proc/self/cmdline",
+  "/proc/self/maps",
+];
+
+const BLOCKED_CWD_PREFIXES = ["/proc", "/sys", "/dev"];
+
 /**
  * Parse a config value that may be a string (comma-separated) or already an array.
  */
@@ -81,6 +92,34 @@ export function checkDomainPolicy(url: string, config: ToolsPluginConfig): strin
 }
 
 /**
+ * Check if a working directory is safe to use.
+ * Returns null if allowed, or an error message string if blocked.
+ */
+export function checkCwdPolicy(cwd: string | undefined): string | null {
+  if (cwd === undefined) return null;
+
+  // Must be absolute
+  if (!cwd.startsWith("/")) {
+    return "Working directory must be an absolute path";
+  }
+
+  // No path traversal
+  const normalized = cwd.replace(/\/+/g, "/");
+  if (normalized.includes("/../") || normalized.endsWith("/..")) {
+    return "Path traversal not allowed in working directory";
+  }
+
+  // Block sensitive filesystem areas
+  for (const prefix of BLOCKED_CWD_PREFIXES) {
+    if (normalized === prefix || normalized.startsWith(`${prefix}/`)) {
+      return `Working directory '${prefix}' is not allowed`;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Check if a command is allowed by the exec policy (non-sandboxed mode only).
  * Returns null if allowed, or an error message string if blocked.
  */
@@ -94,6 +133,14 @@ export function checkCommandPolicy(command: string, config: ToolsPluginConfig): 
       if (command.includes(op)) {
         return "Shell operators not allowed on host. Enable sandboxing for full shell access.";
       }
+    }
+  }
+
+  // Check for sensitive file targets
+  const lowerCommand = command.toLowerCase();
+  for (const sensitive of SENSITIVE_PATHS) {
+    if (lowerCommand.includes(sensitive)) {
+      return `Access to '${sensitive}' is not allowed`;
     }
   }
 

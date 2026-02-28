@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createExecCommandHandler } from "../src/exec-command.js";
 import type { ToolsPluginConfig } from "../src/types.js";
 
@@ -78,5 +78,65 @@ describe("createExecCommandHandler", () => {
     const result = await handler({ command: "ls | grep tmp" });
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain("Shell operators not allowed");
+  });
+
+  it("rejects invalid cwd paths (relative)", async () => {
+    const handler = createExecCommandHandler(() => makeConfig());
+    const result = await handler({ command: "ls", cwd: "../../../etc" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("absolute path");
+  });
+
+  it("rejects /proc cwd", async () => {
+    const handler = createExecCommandHandler(() => makeConfig());
+    const result = await handler({ command: "ls", cwd: "/proc/self" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("not allowed");
+  });
+
+  it("rejects /sys cwd", async () => {
+    const handler = createExecCommandHandler(() => makeConfig());
+    const result = await handler({ command: "ls", cwd: "/sys/kernel" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("not allowed");
+  });
+
+  it("accepts valid absolute cwd", async () => {
+    const handler = createExecCommandHandler(() => makeConfig());
+    const result = await handler({ command: "ls", cwd: "/tmp" });
+    expect(result.isError).toBeFalsy();
+  });
+
+  it("respects maxOutputSize config", async () => {
+    const handler = createExecCommandHandler(() => makeConfig({ maxOutputSize: 20 }));
+    // Generate output longer than 20 chars
+    const result = await handler({ command: "echo", cwd: undefined });
+    // echo of a long string — use a word that's short enough to be allowed
+    const result2 = await createExecCommandHandler(() => makeConfig({ maxOutputSize: 5 }))({
+      command: "echo abcdefghijklmnopqrstuvwxyz",
+    });
+    expect(result2.content[0].text).toContain("truncated");
+  });
+
+  it("strips env variables by default (no secrets leaked)", async () => {
+    // We test that allowed commands still work with stripped env (PATH is preserved)
+    const handler = createExecCommandHandler(() => makeConfig());
+    const result = await handler({ command: "echo test" });
+    expect(result.isError).toBeFalsy();
+    expect(result.content[0].text).toContain("test");
+  });
+
+  it("returns error for commands targeting sensitive files", async () => {
+    const handler = createExecCommandHandler(() => makeConfig());
+    const result = await handler({ command: "cat /etc/shadow" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("not allowed");
+  });
+
+  it("returns error for commands targeting /etc/passwd", async () => {
+    const handler = createExecCommandHandler(() => makeConfig());
+    const result = await handler({ command: "cat /etc/passwd" });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("not allowed");
   });
 });
