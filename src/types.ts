@@ -36,4 +36,8 @@ export interface ToolsPluginConfig {
   blockShellOperators?: boolean;
   /** Maximum exec timeout in ms (default: 60000) */
   maxExecTimeout?: number;
+  /** Maximum output size in characters (default: 10000) */
+  maxOutputSize?: number;
+  /** Strip environment variables from child process (default: true) */
+  stripEnv?: boolean;
 }

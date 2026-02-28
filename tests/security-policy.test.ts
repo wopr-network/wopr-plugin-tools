@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkCommandPolicy, checkDomainPolicy, parseList } from "../src/security-policy.js";
+import { checkCommandPolicy, checkCwdPolicy, checkDomainPolicy, parseList } from "../src/security-policy.js";
 import type { ToolsPluginConfig } from "../src/types.js";
 
 describe("checkDomainPolicy", () => {
@@ -84,6 +84,68 @@ describe("checkCommandPolicy", () => {
   it("allows shell operators when blockShellOperators is false", () => {
     const config: ToolsPluginConfig = { blockShellOperators: false };
     expect(checkCommandPolicy("ls | grep foo", config)).toBeNull();
+  });
+
+  it("blocks commands with /etc/shadow argument", () => {
+    expect(checkCommandPolicy("cat /etc/shadow", {})).not.toBeNull();
+  });
+
+  it("blocks commands with /etc/passwd argument", () => {
+    expect(checkCommandPolicy("cat /etc/passwd", {})).not.toBeNull();
+  });
+
+  it("blocks commands targeting /proc/self/environ", () => {
+    expect(checkCommandPolicy("cat /proc/self/environ", {})).not.toBeNull();
+  });
+
+  it("allows normal file arguments", () => {
+    expect(checkCommandPolicy("cat README.md", {})).toBeNull();
+  });
+
+  it("does not false-positive on path that contains sensitive path as substring", () => {
+    // /home/user/notes-about-etc-passwd.txt is NOT /etc/passwd
+    expect(checkCommandPolicy("cat /home/user/notes-about-etc-passwd.txt", {})).toBeNull();
+    // /tmp/shadow-backup is NOT /etc/shadow
+    expect(checkCommandPolicy("cat /tmp/shadow-backup", {})).toBeNull();
+  });
+
+  it("allows ls with no args", () => {
+    expect(checkCommandPolicy("ls", {})).toBeNull();
+  });
+});
+
+describe("checkCwdPolicy", () => {
+  it("allows undefined cwd", () => {
+    expect(checkCwdPolicy(undefined)).toBeNull();
+  });
+
+  it("allows absolute paths", () => {
+    expect(checkCwdPolicy("/home/user/project")).toBeNull();
+  });
+
+  it("rejects relative paths", () => {
+    expect(checkCwdPolicy("../etc")).not.toBeNull();
+  });
+
+  it("rejects paths with .. components", () => {
+    expect(checkCwdPolicy("/home/user/../../../etc/passwd")).not.toBeNull();
+  });
+
+  it("rejects paths starting with /proc", () => {
+    expect(checkCwdPolicy("/proc/self/environ")).not.toBeNull();
+  });
+
+  it("rejects paths starting with /sys", () => {
+    expect(checkCwdPolicy("/sys/kernel")).not.toBeNull();
+  });
+
+  it("rejects paths starting with /dev", () => {
+    expect(checkCwdPolicy("/dev/shm")).not.toBeNull();
+  });
+
+  it("allows normal working directories", () => {
+    expect(checkCwdPolicy("/tmp/workdir")).toBeNull();
+    expect(checkCwdPolicy("/home/user/project/src")).toBeNull();
   });
 });
 

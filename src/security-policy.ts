@@ -6,6 +6,8 @@
  * fine-grained control.
  */
 
+import { normalize } from "node:path";
+import { parse as parseShellQuote } from "shell-quote";
 import type { ToolsPluginConfig } from "./types.js";
 
 const DEFAULT_ALLOWED_COMMANDS = [
@@ -34,6 +36,17 @@ const DEFAULT_ALLOWED_COMMANDS = [
 ];
 
 const SHELL_OPERATORS = [";", "&&", "||", "|", "`", "$("];
+
+const SENSITIVE_PATHS = [
+  "/etc/shadow",
+  "/etc/passwd",
+  "/etc/sudoers",
+  "/proc/self/environ",
+  "/proc/self/cmdline",
+  "/proc/self/maps",
+];
+
+const BLOCKED_CWD_PREFIXES = ["/proc", "/sys", "/dev"];
 
 /**
  * Parse a config value that may be a string (comma-separated) or already an array.
@@ -81,6 +94,38 @@ export function checkDomainPolicy(url: string, config: ToolsPluginConfig): strin
 }
 
 /**
+ * Check if a working directory is safe to use.
+ * Returns null if allowed, or an error message string if blocked.
+ */
+export function checkCwdPolicy(cwd: string | undefined): string | null {
+  if (cwd === undefined) return null;
+
+  // Must be absolute
+  if (!cwd.startsWith("/")) {
+    return "Working directory must be an absolute path";
+  }
+
+  // Reject paths with traversal components BEFORE normalizing.
+  // normalize() resolves ".." away, so checking after normalize is dead code.
+  const segments = cwd.split("/");
+  if (segments.some((seg) => seg === "..")) {
+    return "Path traversal not allowed in working directory";
+  }
+
+  // Normalize to collapse double slashes etc.
+  const normalized = normalize(cwd);
+
+  // Block sensitive filesystem areas
+  for (const prefix of BLOCKED_CWD_PREFIXES) {
+    if (normalized === prefix || normalized.startsWith(`${prefix}/`)) {
+      return `Working directory '${prefix}' is not allowed`;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Check if a command is allowed by the exec policy (non-sandboxed mode only).
  * Returns null if allowed, or an error message string if blocked.
  */
@@ -93,6 +138,22 @@ export function checkCommandPolicy(command: string, config: ToolsPluginConfig): 
     for (const op of SHELL_OPERATORS) {
       if (command.includes(op)) {
         return "Shell operators not allowed on host. Enable sandboxing for full shell access.";
+      }
+    }
+  }
+
+  // Check for sensitive file targets by inspecting each token individually.
+  // Using substring match on the raw command string produces false positives
+  // for legitimate paths that merely contain a sensitive path as a substring
+  // (e.g. /home/user/notes-about-etc-passwd.txt).
+  const parsedTokens = parseShellQuote(command);
+  for (const token of parsedTokens) {
+    if (typeof token !== "string") continue;
+    const normalizedToken = normalize(token);
+    for (const sensitive of SENSITIVE_PATHS) {
+      const normalizedSensitive = normalize(sensitive);
+      if (normalizedToken === normalizedSensitive || normalizedToken.startsWith(`${normalizedSensitive}/`)) {
+        return `Access to '${sensitive}' is not allowed`;
       }
     }
   }
