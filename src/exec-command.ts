@@ -23,6 +23,7 @@
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { parse as parseShellQuote } from "shell-quote";
 import { checkCommandPolicy, checkCwdPolicy } from "./security-policy.js";
 import type { A2AToolResult, ToolsPluginConfig } from "./types.js";
 
@@ -75,7 +76,12 @@ export function createExecCommandHandler(getConfig: () => ToolsPluginConfig) {
     }
 
     // Parse command into executable + args for execFile (no shell)
-    const parts = command.trim().split(/\s+/);
+    // shell-quote handles quoted arguments correctly (e.g. echo "hello world")
+    const parsedParts = parseShellQuote(command);
+    const parts = parsedParts.filter((p): p is string => typeof p === "string");
+    if (parts.length === 0) {
+      return { content: [{ type: "text", text: "Empty command" }], isError: true };
+    }
     const executable = parts[0];
     const execArgs = parts.slice(1);
 

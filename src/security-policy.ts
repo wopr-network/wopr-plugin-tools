@@ -6,6 +6,7 @@
  * fine-grained control.
  */
 
+import { normalize } from "node:path";
 import type { ToolsPluginConfig } from "./types.js";
 
 const DEFAULT_ALLOWED_COMMANDS = [
@@ -103,8 +104,8 @@ export function checkCwdPolicy(cwd: string | undefined): string | null {
     return "Working directory must be an absolute path";
   }
 
-  // No path traversal
-  const normalized = cwd.replace(/\/+/g, "/");
+  // Resolve . and .. segments before checking for traversal
+  const normalized = normalize(cwd);
   if (normalized.includes("/../") || normalized.endsWith("/..")) {
     return "Path traversal not allowed in working directory";
   }
