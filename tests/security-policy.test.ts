@@ -102,6 +102,13 @@ describe("checkCommandPolicy", () => {
     expect(checkCommandPolicy("cat README.md", {})).toBeNull();
   });
 
+  it("does not false-positive on path that contains sensitive path as substring", () => {
+    // /home/user/notes-about-etc-passwd.txt is NOT /etc/passwd
+    expect(checkCommandPolicy("cat /home/user/notes-about-etc-passwd.txt", {})).toBeNull();
+    // /tmp/shadow-backup is NOT /etc/shadow
+    expect(checkCommandPolicy("cat /tmp/shadow-backup", {})).toBeNull();
+  });
+
   it("allows ls with no args", () => {
     expect(checkCommandPolicy("ls", {})).toBeNull();
   });

@@ -7,6 +7,7 @@
  */
 
 import { normalize } from "node:path";
+import { parse as parseShellQuote } from "shell-quote";
 import type { ToolsPluginConfig } from "./types.js";
 
 const DEFAULT_ALLOWED_COMMANDS = [
@@ -137,11 +138,19 @@ export function checkCommandPolicy(command: string, config: ToolsPluginConfig): 
     }
   }
 
-  // Check for sensitive file targets
-  const lowerCommand = command.toLowerCase();
-  for (const sensitive of SENSITIVE_PATHS) {
-    if (lowerCommand.includes(sensitive)) {
-      return `Access to '${sensitive}' is not allowed`;
+  // Check for sensitive file targets by inspecting each token individually.
+  // Using substring match on the raw command string produces false positives
+  // for legitimate paths that merely contain a sensitive path as a substring
+  // (e.g. /home/user/notes-about-etc-passwd.txt).
+  const parsedTokens = parseShellQuote(command);
+  for (const token of parsedTokens) {
+    if (typeof token !== "string") continue;
+    const normalizedToken = normalize(token);
+    for (const sensitive of SENSITIVE_PATHS) {
+      const normalizedSensitive = normalize(sensitive);
+      if (normalizedToken === normalizedSensitive || normalizedToken.startsWith(`${normalizedSensitive}/`)) {
+        return `Access to '${sensitive}' is not allowed`;
+      }
     }
   }
 
