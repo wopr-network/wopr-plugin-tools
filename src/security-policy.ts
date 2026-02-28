@@ -105,11 +105,15 @@ export function checkCwdPolicy(cwd: string | undefined): string | null {
     return "Working directory must be an absolute path";
   }
 
-  // Resolve . and .. segments before checking for traversal
-  const normalized = normalize(cwd);
-  if (normalized.includes("/../") || normalized.endsWith("/..")) {
+  // Reject paths with traversal components BEFORE normalizing.
+  // normalize() resolves ".." away, so checking after normalize is dead code.
+  const segments = cwd.split("/");
+  if (segments.some((seg) => seg === "..")) {
     return "Path traversal not allowed in working directory";
   }
+
+  // Normalize to collapse double slashes etc.
+  const normalized = normalize(cwd);
 
   // Block sensitive filesystem areas
   for (const prefix of BLOCKED_CWD_PREFIXES) {
