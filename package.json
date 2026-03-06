@@ -1,18 +1,14 @@
 {
   "name": "@wopr-network/wopr-plugin-tools",
-  "version": "1.0.0",
-  "description": "HTTP fetch and shell exec tools for WOPR bots - opt-in security-sensitive capabilities",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "version": "2.0.0",
+  "description": "Meta package providing http and exec capabilities - depends on wopr-plugin-http and wopr-plugin-exec",
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "prepublishOnly": "npm run build",
-    "lint": "biome check --config-path=. src/",
-    "lint:fix": "biome check --config-path=. --fix src/",
-    "format": "biome format --config-path=. --write src/",
-    "check": "biome check --config-path=. src/ && tsc --noEmit",
+    "check": "biome check src/ && tsc --noEmit",
+    "format": "biome format --write src/",
     "test": "vitest run"
   },
   "keywords": [
@@ -21,30 +17,22 @@
     "tools",
     "http",
     "exec",
-    "fetch"
+    "fetch",
+    "meta"
   ],
   "author": "WOPR",
   "license": "MIT",
   "dependencies": {
-    "@types/shell-quote": "^1.7.5",
-    "@wopr-network/plugin-types": "^0.5.0",
-    "shell-quote": "^1.8.3",
-    "winston": "^3.19.0"
+    "@wopr-network/plugin-types": "^0.1.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.15",
-    "@types/node": "^25.2.3",
-    "@vitest/coverage-istanbul": "^4.0.18",
-    "typescript": "^5.3.0",
-    "vitest": "^4.0.18"
+    "@biomejs/biome": "^2.0.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.0"
   },
-  "publishConfig": {
-    "access": "public"
-  },
-  "files": [
-    "dist"
-  ],
-  "release": {
-    "extends": "@wopr-network/semantic-release-config"
+  "peerDependencies": {
+    "@wopr-network/wopr-plugin-http": ">=0.1.0",
+    "@wopr-network/wopr-plugin-exec": ">=0.1.0"
   }
 }
