@@ -4,11 +4,16 @@
   "description": "Meta package providing http and exec capabilities - depends on wopr-plugin-http and wopr-plugin-exec",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./dist/index.js"
   },
   "scripts": {
-    "check": "biome check src/ && tsc --noEmit",
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --fix src/",
     "format": "biome format --write src/",
+    "check": "biome check src/ && tsc --noEmit",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "keywords": [
